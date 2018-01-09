@@ -25,17 +25,17 @@ lastAssocStatus: 0
 
 	// the map of data we expect.
 	parsed := map[string]interface{}{
-		"agrCtlRSSI":      int64(-42),
-		"agrExtRSSI":      int64(0),
-		"agrCtlNoise":     int64(-92),
-		"agrExtNoise":     int64(0),
-		"lastTxRate":      int64(300),
-		"maxRate":         int64(450),
-		"lastAssocStatus": int64(0),
-		"MCS":             int64(15),
+		"agrCtlRSSI":      int(-42),
+		"agrExtRSSI":      int(0),
+		"agrCtlNoise":     int(-92),
+		"agrExtNoise":     int(0),
+		"lastTxRate":      int(300),
+		"maxRate":         int(450),
+		"lastAssocStatus": int(0),
+		"MCS":             int(15),
 	}
 	// load the table from the input.
-	got, err := loadWirelessTable([]byte(input), false)
+	got, _, err := loadWirelessTable([]byte(input), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ lastAssocStatus: 0
 		t.Fatalf("want %+v, got %+v", parsed, got)
 	}
 	for key := range parsed {
-		if parsed[key].(int64) != got[key].(int64) {
+		if parsed[key].(int) != got[key].(int) {
 			t.Fatalf("want %+v, got %+v", parsed[key], got[key])
 		}
 	}

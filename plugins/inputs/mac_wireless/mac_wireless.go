@@ -1,14 +1,15 @@
 package mac_wireless
 
 import (
-	"github.com/influxdata/telegraf"
-	"github.com/influxdata/telegraf/plugins/inputs"
 	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/influxdata/telegraf"
+	"github.com/influxdata/telegraf/plugins/inputs"
 )
 
 // default file paths
@@ -23,7 +24,7 @@ type Wireless struct {
 
 var sampleConfig = `
   ## command to get wireless info. If empty default will be used:
-  ##  
+  ##
   ## This can also be overridden with env variable, see README.
   cmd = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I"
   ## dump metrics with 0 values too
@@ -65,38 +66,39 @@ func (ns *Wireless) Gather(acc telegraf.Accumulator) error {
 }
 
 func (ns *Wireless) gatherWireless(data []byte, acc telegraf.Accumulator) error {
-	metrics, err := loadWirelessTable(data, ns.DumpZeros)
+	metrics, tags, err := loadWirelessTable(data, ns.DumpZeros)
 	if err != nil {
 		return err
 	}
-	tags := map[string]string{
-		"name": "airport",
-	}
+	tags["name"] = "airport"
 	acc.AddFields("wireless", metrics, tags)
 	return nil
 }
 
-func loadWirelessTable(table []byte, dumpZeros bool) (map[string]interface{}, error) {
+func loadWirelessTable(table []byte, dumpZeros bool) (map[string]interface{}, map[string]string, error) {
+	tags := make(map[string]string)
 	metrics := map[string]interface{}{}
-	myLines := strings.Split(string(table), "\n")
-	for x := 0; x < len(myLines)-1; x++ {
-		f := strings.Split(myLines[x], ":")
-		f[0] = strings.Trim(f[0], " ")
-		f[1] = strings.Trim(f[1], " ")
-		n, err := strconv.ParseInt(strings.Trim(f[1], " "), 10, 64)
+	for _, line := range strings.Split(strings.TrimSpace(string(table)), "\n") {
+		f := strings.SplitN(line, ":", 2)
+		f[0] = strings.Replace(strings.Replace(strings.TrimSpace(f[0]), " ", "_", -1), ".", "_", -1)
+		f[1] = strings.TrimSpace(f[1])
+		n, err := strconv.Atoi(f[1])
 		if err != nil {
-			continue
-		}
-		if n == 0 {
-			if dumpZeros {
+			if f[0] == "channel" {
+				channelInfo := strings.Split(f[1], ",")
+				tags[f[0]] = channelInfo[0]
+				tags[f[0]+"_width"] = channelInfo[1]
+			} else {
+				tags[f[0]] = f[1]
+			}
+		} else {
+			if n == 0 && dumpZeros {
 				continue
 			}
+			metrics[f[0]] = n
 		}
-		metrics[strings.Trim(f[0], " ")] = n
-
 	}
-	return metrics, nil
-
+	return metrics, tags, nil
 }
 
 // loadPath can be used to read path firstly from config
