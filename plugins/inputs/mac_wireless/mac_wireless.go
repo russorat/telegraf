@@ -79,23 +79,28 @@ func loadWirelessTable(table []byte, dumpZeros bool) (map[string]interface{}, ma
 	tags := make(map[string]string)
 	metrics := map[string]interface{}{}
 	for _, line := range strings.Split(strings.TrimSpace(string(table)), "\n") {
+		//fmt.Println(line)
 		f := strings.SplitN(line, ":", 2)
 		f[0] = strings.Replace(strings.Replace(strings.TrimSpace(f[0]), " ", "_", -1), ".", "_", -1)
 		f[1] = strings.TrimSpace(f[1])
-		n, err := strconv.Atoi(f[1])
-		if err != nil {
-			if f[0] == "channel" {
-				channelInfo := strings.Split(f[1], ",")
-				tags[f[0]] = channelInfo[0]
-				tags[f[0]+"_width"] = channelInfo[1]
+		if f[0] == "channel" {
+			channelInfo := strings.Split(f[1], ",")
+			tags[f[0]] = string(channelInfo[0])
+			if len(channelInfo) > 1 {
+				tags[f[0]+"_width"] = string(channelInfo[1])
 			} else {
-				tags[f[0]] = f[1]
+				tags[f[0]+"_width"] = "20"
 			}
 		} else {
-			if n == 0 && dumpZeros {
-				continue
+			n, err := strconv.Atoi(f[1])
+			if err != nil {
+				tags[f[0]] = f[1]
+			} else {
+				if n == 0 && dumpZeros {
+					continue
+				}
+				metrics[f[0]] = n
 			}
-			metrics[f[0]] = n
 		}
 	}
 	return metrics, tags, nil
